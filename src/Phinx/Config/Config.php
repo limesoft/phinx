@@ -54,10 +54,9 @@ class Config implements \ArrayAccess
      * @param array $configArray Config Array
      * @param string $configFilePath Optional File Path
      */
-    public function __construct($configArray, $configFilePath = null)
+    public function __construct($config = null)
     {
-        $this->configFilePath = $configFilePath;
-        $this->values = $this->replaceTokens($configArray);
+        $this->values = $config;
     }
 
     /**
@@ -69,52 +68,7 @@ class Config implements \ArrayAccess
     public static function fromYaml($configFilePath)
     {
         $configArray = Yaml::parse($configFilePath);
-        return new self($configArray, $configFilePath);
-    }
-
-    /**
-     * Create a new instance of the config class using a Yaml file path.
-     *
-     * @param string $configFilePath Path to the Yaml File
-     * @throws \RuntimeException
-     * @return Config
-     */
-    public static function fromJSON($configFilePath)
-    {
-        $configArray = json_decode(file_get_contents($configFilePath), true);
-        if (!is_array($configArray)) {
-            throw new \RuntimeException(sprintf(
-                'File \'%s\' must be valid JSON',
-                $configFilePath
-            ));
-        }
-        return new self($configArray, $configFilePath);
-    }
-
-    /**
-     * Create a new instance of the config class using a PHP file path.
-     *
-     * @param string $configFilePath Path to the PHP File
-     * @throws \RuntimeException
-     * @return Config
-     */
-    public static function fromPHP($configFilePath)
-    {
-        ob_start();
-        /** @noinspection PhpIncludeInspection */
-        $configArray = include($configFilePath);
-
-        // Hide console output
-        ob_get_clean();
-
-        if (!is_array($configArray)) {
-            throw new \RuntimeException(sprintf(
-                'PHP file \'%s\' must return an array',
-                $configFilePath
-            ));
-        }
-
-        return new self($configArray, $configFilePath);
+        return new self($configArray);
     }
 
     /**
@@ -250,35 +204,6 @@ class Config implements \ArrayAccess
         }
 
         return $path;
-    }
-
-    /**
-     * Replace tokens in the specified array.
-     *
-     * @param array $arr Array to replace
-     * @return array
-     */
-    public function replaceTokens($arr)
-    {
-        // Get environment variables
-        // $_ENV is empty because variables_order does not include it normally
-        $tokens = array();
-        foreach ($_SERVER as $varname => $varvalue) {
-            if (0 === strpos($varname, 'PHINX_')) {
-                $tokens['%%' . $varname . '%%'] = $varvalue;
-            }
-        }
-
-        // Phinx defined tokens (override env tokens)
-        $tokens['%%PHINX_CONFIG_PATH%%'] = $this->getConfigFilePath();
-        $tokens['%%PHINX_CONFIG_DIR%%'] = dirname($this->getConfigFilePath());
-
-        // Recurse the array and replace tokens
-        if (is_array($arr)) {
-            return $this->recurseArrayForTokens($arr, $tokens);
-        }
-
-        return $arr;
     }
 
     /**
